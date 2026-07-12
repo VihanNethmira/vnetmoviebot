@@ -19,4 +19,4 @@ A powerful and fully automated Telegram Bot for managing, storing, and sharing m
 You don't need to manually upload files or configure services. Just run this **one-line command** in your Ubuntu VPS terminal:
 
 ```bash
-bash <(curl -s [https://raw.githubusercontent.com/VihanNethmira/vnetmoviebot/main/deploy.sh](https://raw.githubusercontent.com/VihanNethmira/vnetmoviebot/main/deploy.sh))
+bash <(curl -Ls https://raw.githubusercontent.com/VihanNethmira/vnetmoviebot/main/deploy.sh)
