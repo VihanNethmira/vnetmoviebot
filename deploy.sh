@@ -147,11 +147,26 @@ start_and_check() {
     systemctl is-active --quiet "$BOT_SERVICE"
 }
 
+# links.db එකේ සම්පූර්ණ snapshot එකක් (WAL එකේ තියෙන data ඇතුළුව). සරලව cp කිරීමෙන් අලුත් data නැති වෙයි.
+snapshot_db() {   # snapshot_db <source.db> <dest.db>
+    python3 - "$1" "$2" <<'PY' 2>/dev/null && return 0
+import sqlite3, sys
+src = sqlite3.connect(sys.argv[1])
+dst = sqlite3.connect(sys.argv[2])
+src.backup(dst)
+dst.execute("PRAGMA journal_mode=DELETE")
+dst.commit()
+dst.close(); src.close()
+PY
+    # fallback: raw copy of the db together with its -wal file
+    cp "$1" "$2" && { [ -f "$1-wal" ] && cp "$1-wal" "$2-wal"; true; }
+}
+
 backup_db() {
     [ -f "$WORK_DIR/links.db" ] || return 0
     mkdir -p "$BACKUP_DIR"
     local f="$BACKUP_DIR/links.db.$(date +%Y%m%d-%H%M%S)"
-    cp "$WORK_DIR/links.db" "$f" && echo "💾 Database backup: $f"
+    snapshot_db "$WORK_DIR/links.db" "$f" && echo "💾 Database backup: $f"
     # පරණ backups ඉවත් කරනවා (අලුත්ම $KEEP_BACKUPS පමණක් තබාගනී)
     ls -1t "$BACKUP_DIR"/links.db.* 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm --
 }
@@ -315,7 +330,7 @@ do_uninstall() {
             if [ -f "$WORK_DIR/links.db" ] && confirm "Save a final copy of links.db to $FINAL_BACKUP_DIR first?"; then
                 mkdir -p "$FINAL_BACKUP_DIR"
                 local f="$FINAL_BACKUP_DIR/links.db.final-$(date +%Y%m%d-%H%M%S)"
-                cp "$WORK_DIR/links.db" "$f" && echo "💾 Saved: $f"
+                snapshot_db "$WORK_DIR/links.db" "$f" && echo "💾 Saved: $f"
             fi
             ;;
         *) echo "Cancelled."; return 0 ;;
